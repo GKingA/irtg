@@ -113,8 +113,9 @@ def pair_up(corrected_dict, irtg_pairs):
         manipulated_word = word[:]
         manipulated_word.replace('PERIOD', '.').replace('HYPHEN', '-').replace('DIGIT', '0').replace('PER', '/').replace('SEMICOLON', ';').replace('COLON', ',')
         for dict_ in corrected_dict:
-            if manipulated_word == dict_['text'] or manipulated_word[:-1] == dict_['text'] \
-                    or manipulated_word.lower() == dict_['text'] or manipulated_word.capitalize() == dict_['text']:
+            if (manipulated_word == dict_['text'] or (manipulated_word.endswith('s') and
+                                                     manipulated_word[:-1] == dict_['text']) \
+                    or manipulated_word.lower() == dict_['text'] or manipulated_word.capitalize() == dict_['text']):
                 matches.append(dict_)
                 if (word, pos) not in good_words:
                     good_words.append((word, pos))
@@ -139,7 +140,23 @@ def write_out(dict_, filename):
             print(json.dumps(element), file=writer)
 
 
+def get_graphs(filename, new_filename):
+    graphs = []
+    with open(filename, 'r') as data:
+        json_data = data.readline()
+        while json_data is not None and json_data != '':
+            graphs.append(json.loads(json_data)['graph'])
+            json_data = data.readline()
+    with open(new_filename, 'w') as writer:
+        for graph in graphs:
+            print(graph, file=writer)
+
+
 if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        print("Proper usage:\n"
+              "python check_pos.py <dictionary_json> <irtg_file>", file=sys.stderr)
+        raise Exception()
     dictionary = sys.argv[1]
     irtg = sys.argv[2]
     corrected_dict = parse_tags(dictionary)
@@ -147,3 +164,4 @@ if __name__ == '__main__':
     results = pair_up(corrected_dict, irtg_pairs)
     write_out(corrected_dict, dictionary.replace('.json', '_v2.json'))
     write_out(results, dictionary.replace('.json', '_matched.json'))
+    get_graphs(dictionary.replace('.json', '_matched.json'), dictionary.replace('.json', '_matched.graph'))
