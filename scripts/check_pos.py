@@ -115,7 +115,8 @@ def pair_up(corrected_dict, irtg_pairs):
         for dict_ in corrected_dict:
             if (manipulated_word == dict_['text'] or (manipulated_word.endswith('s') and
                                                      manipulated_word[:-1] == dict_['text']) \
-                    or manipulated_word.lower() == dict_['text'] or manipulated_word.capitalize() == dict_['text']):
+                    or manipulated_word.lower() == dict_['text'] or manipulated_word.capitalize() == dict_['text']) \
+                    and ':nn' not in dict_['graph']:
                 matches.append(dict_)
                 if (word, pos) not in good_words:
                     good_words.append((word, pos))
@@ -140,14 +141,16 @@ def write_out(dict_, filename):
             print(json.dumps(element), file=writer)
 
 
-def get_graphs(filename, new_filename):
+def get_graphs(filename, new_filename, field):
     graphs = []
     with open(filename, 'r') as data:
         json_data = data.readline()
         while json_data is not None and json_data != '':
-            graphs.append(json.loads(json_data)['graph'])
+            graphs.append(json.loads(json_data)[field])
             json_data = data.readline()
     with open(new_filename, 'w') as writer:
+        print("# IRTG unannotated corpus file, v1.0\n"
+              "# interpretation graph: de.up.ling.irtg.algebra.graph.GraphAlgebra", file=writer)
         for graph in graphs:
             print(graph, file=writer)
 
@@ -164,4 +167,4 @@ if __name__ == '__main__':
     results = pair_up(corrected_dict, irtg_pairs)
     write_out(corrected_dict, dictionary.replace('.json', '_v2.json'))
     write_out(results, dictionary.replace('.json', '_matched.json'))
-    get_graphs(dictionary.replace('.json', '_matched.json'), dictionary.replace('.json', '_matched.graph'))
+    get_graphs(dictionary.replace('.json', '_matched.json'), dictionary.replace('.json', '_matched.graph'), 'graph')
