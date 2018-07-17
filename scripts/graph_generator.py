@@ -1,8 +1,10 @@
 import xml.etree.ElementTree as ET
-import subprocess
 import json
 import os
 import sys
+import requests
+import time
+from parser import arguments
 
 
 class Entry:
@@ -80,10 +82,53 @@ def parser(dict_xml, definition_file):
     return entries
 
 
-def command_call(definition_file, definition_graph, parse_to_isi, stanford_parser, converter):
-    command = "python {0}/parse_to_isi.py {1} {2} {3} {4}".format(parse_to_isi, stanford_parser, converter,
-                                                                  definition_file, definition_graph).split(' ')
-    subprocess.call(command)
+def find_special_chars(sentences):
+    special = []
+    with open(sentences, 'r') as sentence_file:
+        sents = sentence_file.read().split('\n')
+        for s in sents:
+            special += [c for c in s if ord(c) > 128]
+    special = list(set(special))
+    special.sort()
+    return special, len(special)
+
+
+def replace_special_chars(sentence):
+    return sentence.replace('¢', 'cent').replace('£', 'pound ').replace('¥', 'yen').replace('¨', 'umlaut')\
+        .replace('°', 'degrees').replace('²', '^2').replace('º', ' degrees').replace('¼', ' 1/4').replace('½', ' 1/2 ')\
+        .replace('¾', ' 3/4  ').replace('à', 'a').replace('ç', 'c underscore').replace('è', 'e').replace('é', 'e')\
+        .replace('ñ', 'nj').replace('ô', 'o hat').replace('ŋ', 'nh').replace('ə', 'upside down e').replace('ˈ', '\'')\
+        .replace('ˌ', ',').replace('β', 'beta').replace('π', 'pi').replace('–', '-').replace('♭', 'b')\
+        .replace('〃', 'repeat')
+
+
+def command_call(definition_file, definition_graph):
+    with open(definition_file, 'r') as defs:
+        definitions_read = defs.read().split('\n')
+        start_at = 0
+        graph_file = open(definition_graph, 'a')
+        if os.path.isfile(definition_graph) and os.stat(definition_graph).st_size != 0:
+            start_at = len(open(definition_graph, 'r').read().split('\n')) - 2 - 1  # -2 for the headers
+                                                                                    # -1 for the newline at the end
+        else:
+            graph_file.write("# IRTG unannotated corpus file, v1.0\n"
+                             "# interpretation graph: de.up.ling.irtg.algebra.graph.GraphAlgebra\n")
+        headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+        for line in definitions_read[start_at:]:
+            graph_line = requests.post("http://hlt.bme.hu/4lang/udgraph",
+                                       data=json.dumps({'sentence': replace_special_chars(line.strip())}),
+                                       headers=headers, timeout=60)
+            try:
+                graph_to_print = graph_line.json()['graph'].split('\n')[-1]
+                print(graph_to_print, file=graph_file)
+            except Exception:
+                time.sleep(60)
+                graph_line = requests.post("http://hlt.bme.hu/4lang/udgraph",
+                                           data=json.dumps({'sentence': replace_special_chars(line.strip())}),
+                                           headers=headers, timeout=60)
+                graph_to_print = graph_line.json()['graph'].split('\n')[-1]
+                print(graph_to_print, file=graph_file)
+        graph_file.close()
 
 
 def save_dictionary(definition_graph, dictionary, entries):
@@ -97,21 +142,19 @@ def save_dictionary(definition_graph, dictionary, entries):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 8:
-        print("Proper usage:\npython3 graph_generator.py <dictionary_xml> <definitions_output> <output_graphs>"
-              "<dictionary_output_json> <parse_to_isi_path> <stanford_parser_path> <converter_path>", file=sys.stderr)
+    if arguments.longman is None:
+        print("Proper usage:\n"
+              "python3 graph_generator.py --longman <dictionary_xml> [--definitions <definitions_output>] "
+              "[--ud_graphs <ud_graphs>] [--definitions_json <dictionary_output_json>]", file=sys.stderr)
         raise Exception()
-    xml_dict = sys.argv[1]
-    definition_file_ = sys.argv[2]
-    definition_graph_ = sys.argv[3]
-    dictionary_ = sys.argv[4]
-    parse_to_isi_ = sys.argv[5]
-    stanford_parser_ = sys.argv[6]
-    converter_ = sys.argv[7]
+    xml_dict = arguments.longman
+    definition_file_ = arguments.definitions
+    definition_graph_ = arguments.ud_graphs
+    dictionary_ = arguments.definitions_json
     if not os.path.isfile(definition_file_):
         entries_ = parser(xml_dict, definition_file_)
     else:
         entries_ = get_entries(xml_dict)
-    if not os.path.isfile(definition_graph_):
-        command_call(definition_file_, definition_graph_, parse_to_isi_, stanford_parser_, converter_)
+    # print(find_special_chars(definition_file_))
+    command_call(definition_file_, definition_graph_)
     save_dictionary(definition_graph_, dictionary_, entries_)
