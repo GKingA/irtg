@@ -1,6 +1,53 @@
 import sys
 import json
 import spacy
+from parser import arguments
+
+
+dict_pos_to_irtg_pos = {
+        'adj': 'ADJ',
+        'adv': 'ADV',
+        'adj, adv': ['ADJ', 'ADV'],
+        'adv, prep': ['ADV', 'ADP'],
+        'auxiliary verb': 'AUX',
+        'conjunction': ['CCONJ', 'SCONJ'],
+        'definite article': 'DET',
+        'determiner': 'DET',
+        'indefinite article': 'DET',
+        'interjection': 'INTJ',
+        'modal verb': 'AUX',
+        'n': ['NOUN', 'PROPN'],
+        'n,v': ['NOUN', 'PROPN', 'VERB', 'AUX'],
+        'noun': ['NOUN', 'PROPN'],
+        'number': 'NUM',
+        'possessive adj': 'DET',
+        'possessive pron': 'PRON',
+        'predeterminer': 'DET',
+        'prefix': 'ADP',
+        'prep': 'ADP',
+        'pron': 'PRON',
+        'quantifier': 'NUM',
+        'suffix': 'ADP',
+        'v': ['VERB', 'AUX'],
+        'X': 'X',
+        '-': 'X',
+        'ADJ': 'ADJ',
+        'ADP': 'ADP',
+        'ADV': 'ADV',
+        'AUX': 'AUX',
+        'CCONJ': 'CCONJ',
+        'DET': 'DET',
+        'INTJ': 'INTJ',
+        'NOUN': 'NOUN',
+        'NUM': 'NUM',
+        'PART': 'PART',
+        'PRON': 'PRON',
+        'PROPN': 'PROPN',
+        'PUNCT': 'PUNCT',
+        'SCONJ': 'SCONJ',
+        'SYM': 'SYM',
+        'VERB': 'VERB'
+    }
 
 
 def parse_tags(dictionary_file):
@@ -24,26 +71,33 @@ def parse_tags(dictionary_file):
         if json_line['pos'] == '-':
             abb = ''
             if 'abbreviation of' in json_line['def']:
-                abb = json_line['def'].split(' abbreviation of ')[1].split(' ')[0]
+                abb = json_line['def'].split('abbreviation of ')[1].split(' ')[0]
             elif 'short form' in json_line['def']:
                 if ' short form of ' in json_line['def']:
-                    abb = json_line['def'].split(' short form of ')[1].split(' ')[0]
+                    abb = json_line['def'].split('short form of ')[1].split(' ')[0]
                 else:
-                    abb = json_line['def'].split(' short form for ')[1].split(' ')[0]
+                    abb = json_line['def'].split('short form for ')[1].split(' ')[0]
             elif 'past' in json_line['def']:
-                if 'past participle' in json_line['def']:
-                    abb = json_line['def'].split(' past participle of ')[1].split(' ')[0]
+                if 'past participle of' in json_line['def']:
+                    abb = json_line['def'].split('past participle of ')[1].split(' ')[0]
+                elif 'past tense of' in json_line['def']:
+                    abb = json_line['def'].split('past tense of ')[1].split(' ')[0]
+                elif 'past tense and a participle of' in json_line['def']:
+                    abb = json_line['def'].split('past tense and a participle of ')[1].split(' ')[0]
+                elif 'past tense and participle of' in json_line['def']:
+                    abb = json_line['def'].split('past tense and participle of ')[1].split(' ')[0]
                 else:
-                    abb = json_line['def'].split(' past tense of ')[1].split(' ')[0]
+                    print(json_line)
+                    raise Exception()
             elif ' present ' in json_line['def']:
                 if 'present participle' in json_line['def']:
-                    abb = json_line['def'].split(' present participle of ')[1].split(' ')[0]
+                    abb = json_line['def'].split('present participle of ')[1].split(' ')[0]
                 else:
-                    abb = json_line['def'].split(' present tense of ')[1].split(' ')[0]
+                    abb = json_line['def'].split('present tense of ')[1].split(' ')[0]
             elif 'spelling of' in json_line['def']:
-                abb = json_line['def'].split(' spelling of ')[1].split(' ')[0]
+                abb = json_line['def'].split('spelling of ')[1].split(' ')[0]
             elif 'plural of' in json_line['def']:
-                abb = json_line['def'].split(' plural of ')[1].split(' ')[0]
+                abb = json_line['def'].split('plural of ')[1].split(' ')[0]
             elif json_line['text'] == 'cc':
                 new_json_line['pos'] = 'NOUN'
             elif json_line['text'].startswith('Mr'):
@@ -57,7 +111,7 @@ def parse_tags(dictionary_file):
                                                 'def': o['def'], 'graph': o['graph']})
             if new_json_line['pos'] == '-':
                 new_json_line['pos'] = [t.pos_ for t in nlp(json_line['text'])][0]
-        if new_definitions != []:
+        if len(new_definitions) != 0:
             corrected += new_definitions
         else:
             corrected.append(new_json_line)
@@ -83,25 +137,6 @@ def parse_irtg_tags(irtg_file):
 
 
 def pair_up(corrected_dict, irtg_pairs):
-    dict_pos_to_irtg_pos = {
-        'adj': 'ADJ',
-        'adv': 'ADV',
-        'auxiliary verb': 'AUX',
-        'conjunction': ['CCONJ', 'SCONJ'],
-        'definite article': 'DET',
-        'determiner': 'DET',
-        'indefinite article': 'DET',
-        'interjection': 'INTJ',
-        'modal verb': 'AUX',
-        'n': ['NOUN', 'PROPN'],
-        'noun': ['NOUN', 'PROPN'],
-        'number': 'NUM',
-        'possessive pron': 'PRON',
-        'prep': 'ADP',
-        'pron': 'PRON',
-        'suffix': 'ADP',
-        'v': ['VERB', 'AUX']
-    }
     result_dict = []
     good_words = []
     success = []
@@ -156,12 +191,12 @@ def get_graphs(filename, new_filename, field):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
+    if arguments.grammar is None:
         print("Proper usage:\n"
-              "python check_pos.py <dictionary_json> <irtg_file>", file=sys.stderr)
+              "python check_pos.py --grammar <irtg_file> [--definitions_json <dictionary_json>]", file=sys.stderr)
         raise Exception()
-    dictionary = sys.argv[1]
-    irtg = sys.argv[2]
+    dictionary = arguments.definitions_json
+    irtg = arguments.grammar
     corrected_dict = parse_tags(dictionary)
     irtg_pairs = parse_irtg_tags(irtg)
     results = pair_up(corrected_dict, irtg_pairs)
