@@ -1,6 +1,7 @@
 import sys
-import check_pos
+from check_pos import parse_tags
 from parser import arguments
+from common import sanitize_word, dict_pos_to_irtg_pos
 
 
 def get_words(irtg):
@@ -15,7 +16,11 @@ def get_words(irtg):
 
 
 def print_definition(grammar, pos, word):
-    grammar.write('{0} -> {1}\n[graph] "({1}<root> / {1})"\n[fourlang] "({1}<root> / {1})"\n\n'.format(pos, word))
+    if word.startswith('interpretation'):
+        word = word.capitalize()
+    if ' ' not in word:
+        grammar.write('{0} -> {1}\n[graph] "({1}<root> / {1})"\n[fourlang] "({1}<root> / {1})"\n\n'
+                      .format(pos, sanitize_word(word)))
 
 
 def find_unknown_words_in_definition(definition, graph_list, grammar, words):
@@ -27,24 +32,24 @@ def find_unknown_words_in_definition(definition, graph_list, grammar, words):
         for u in set(unknown):
             for graph in graph_list:
                 if graph['text'] == u:
-                    if type(check_pos.dict_pos_to_irtg_pos[graph['pos']]) == list:
-                        for pos in check_pos.dict_pos_to_irtg_pos[graph['pos']]:
+                    if type(dict_pos_to_irtg_pos[graph['pos']]) == list:
+                        for pos in dict_pos_to_irtg_pos[graph['pos']]:
                             print_definition(grammar, pos, u)
                     else:
-                        print_definition(grammar, check_pos.dict_pos_to_irtg_pos[graph['pos']], u)
+                        print_definition(grammar, dict_pos_to_irtg_pos[graph['pos']], u)
             words.append(u)
 
 
 def get_graphs_for_words(words, graph_path, irtg):
-    graph_list = check_pos.parse_tags(graph_path)
+    graph_list = parse_tags(graph_path)
     grammar = open(irtg, 'a')
     for line_data in graph_list:
         if line_data['text'] not in words:
-            if type(check_pos.dict_pos_to_irtg_pos[line_data['pos']]) == list:
-                for pos in check_pos.dict_pos_to_irtg_pos[line_data['pos']]:
+            if type(dict_pos_to_irtg_pos[line_data['pos']]) == list:
+                for pos in dict_pos_to_irtg_pos[line_data['pos']]:
                     print_definition(grammar, pos, line_data['text'])
             else:
-                print_definition(grammar, check_pos.dict_pos_to_irtg_pos[line_data['pos']], line_data['text'])
+                print_definition(grammar, dict_pos_to_irtg_pos[line_data['pos']], line_data['text'])
         find_unknown_words_in_definition(line_data['def'], graph_list, grammar, words)
 
 

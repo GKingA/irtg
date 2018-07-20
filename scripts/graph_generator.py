@@ -17,6 +17,39 @@ class Entry:
         return self.definition
 
 
+special_characters = {
+    '¢': 'cent',
+    '£': 'pound ',
+    '¥': 'yen',
+    '¨': 'umlaut',
+    '°': 'degrees',
+    '²': '^2',
+    'º': ' degrees',
+    '¼': ' 1/4',
+    '½': ' 1/2 ',
+    '¾': ' 3/4 ',
+    'à': 'a',
+    'â': 'a',
+    'ç': 'c',
+    'è': 'e',
+    'é': 'e',
+    'ê': 'e',
+    'ñ': 'nj',
+    'ô': 'o',
+    'ŋ': 'nh',
+    'ə': 'e',
+    'ˈ': '\'',
+    'ˌ': ',',
+    'β': 'beta',
+    'π': 'pi',
+    '–': '-',
+    '♭': 'b',
+    '〃': 'repeat',
+    '₂': '2',
+    '™': 'TM'
+}
+
+
 def definitions(sense, text, pos):
     current = []
     def_text = ''
@@ -94,12 +127,9 @@ def find_special_chars(sentences):
 
 
 def replace_special_chars(sentence):
-    return sentence.replace('¢', 'cent').replace('£', 'pound ').replace('¥', 'yen').replace('¨', 'umlaut')\
-        .replace('°', 'degrees').replace('²', '^2').replace('º', ' degrees').replace('¼', ' 1/4').replace('½', ' 1/2 ')\
-        .replace('¾', ' 3/4  ').replace('à', 'a').replace('ç', 'c underscore').replace('è', 'e').replace('é', 'e')\
-        .replace('ñ', 'nj').replace('ô', 'o hat').replace('ŋ', 'nh').replace('ə', 'upside down e').replace('ˈ', '\'')\
-        .replace('ˌ', ',').replace('β', 'beta').replace('π', 'pi').replace('–', '-').replace('♭', 'b')\
-        .replace('〃', 'repeat')
+    for key, value in special_characters.items():
+        sentence = sentence.replace(key, value)
+    return sentence
 
 
 def command_call(definition_file, definition_graph):

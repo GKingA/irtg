@@ -2,52 +2,7 @@ import sys
 import json
 import spacy
 from parser import arguments
-
-
-dict_pos_to_irtg_pos = {
-        'adj': 'ADJ',
-        'adv': 'ADV',
-        'adj, adv': ['ADJ', 'ADV'],
-        'adv, prep': ['ADV', 'ADP'],
-        'auxiliary verb': 'AUX',
-        'conjunction': ['CCONJ', 'SCONJ'],
-        'definite article': 'DET',
-        'determiner': 'DET',
-        'indefinite article': 'DET',
-        'interjection': 'INTJ',
-        'modal verb': 'AUX',
-        'n': ['NOUN', 'PROPN'],
-        'n,v': ['NOUN', 'PROPN', 'VERB', 'AUX'],
-        'noun': ['NOUN', 'PROPN'],
-        'number': 'NUM',
-        'possessive adj': 'DET',
-        'possessive pron': 'PRON',
-        'predeterminer': 'DET',
-        'prefix': 'ADP',
-        'prep': 'ADP',
-        'pron': 'PRON',
-        'quantifier': 'NUM',
-        'suffix': 'ADP',
-        'v': ['VERB', 'AUX'],
-        'X': 'X',
-        '-': 'X',
-        'ADJ': 'ADJ',
-        'ADP': 'ADP',
-        'ADV': 'ADV',
-        'AUX': 'AUX',
-        'CCONJ': 'CCONJ',
-        'DET': 'DET',
-        'INTJ': 'INTJ',
-        'NOUN': 'NOUN',
-        'NUM': 'NUM',
-        'PART': 'PART',
-        'PRON': 'PRON',
-        'PROPN': 'PROPN',
-        'PUNCT': 'PUNCT',
-        'SCONJ': 'SCONJ',
-        'SYM': 'SYM',
-        'VERB': 'VERB'
-    }
+from common import desanitize_word, dict_pos_to_irtg_pos
 
 
 def parse_tags(dictionary_file):
@@ -145,11 +100,10 @@ def pair_up(corrected_dict, irtg_pairs):
     cntr = 0
     for word, pos in irtg_pairs:
         matches = []
-        manipulated_word = word[:]
-        manipulated_word.replace('PERIOD', '.').replace('HYPHEN', '-').replace('DIGIT', '0').replace('PER', '/').replace('SEMICOLON', ';').replace('COLON', ',')
+        manipulated_word = desanitize_word(word)
         for dict_ in corrected_dict:
-            if (manipulated_word == dict_['text'] or (manipulated_word.endswith('s') and
-                                                     manipulated_word[:-1] == dict_['text']) \
+            if (manipulated_word == dict_['text'] or (manipulated_word.endswith('s')
+                                                      and manipulated_word[:-1] == dict_['text'])
                     or manipulated_word.lower() == dict_['text'] or manipulated_word.capitalize() == dict_['text']) \
                     and ':nn' not in dict_['graph']:
                 matches.append(dict_)
