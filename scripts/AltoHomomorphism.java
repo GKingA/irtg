@@ -15,6 +15,9 @@ import de.up.ling.irtg.automata.TreeAutomaton;
 import de.up.ling.irtg.automata.coarse_to_fine.CoarseToFineParser;
 import de.up.ling.irtg.automata.coarse_to_fine.FineToCoarseMapping;
 import de.up.ling.irtg.automata.coarse_to_fine.GrammarCoarsifier;
+import de.up.ling.irtg.automata.language_iteration.SortedLanguageIterator;
+import de.up.ling.irtg.automata.pruning.NoPruningPolicy;
+import de.up.ling.irtg.automata.pruning.PruningPolicy;
 import de.up.ling.irtg.codec.AlgebraStringRepresentationOutputCodec;
 import de.up.ling.irtg.codec.InputCodec;
 import de.up.ling.irtg.codec.OutputCodec;
@@ -119,39 +122,31 @@ public class AltoHomomorphism {
             for(Iterator var24 = corpus.iterator(); var24.hasNext(); System.err.println()) {
                 Instance inst = (Instance)var24.next();
                 Tree<String> dt = null;
+                ArrayList<Tree<String>> trees = null;
                 System.err.printf(formatString, pos++, firstAlgebra.representAsString(inst.getInputObjects().get(firstInterp)));
                 long start = System.nanoTime();
-                if (param.ctf == null) {
+                if (param.ctf == null && param.viterbi != null) {
                     dt = parseViterbi(irtg, inst, interpretations);
-                } else {
+                } else if (param.ctf != null) {
                     dt = parseCtf(coarseToFineParser, inst, ctfInterpretation);
+                }
+                else {
+                    trees = parse(irtg, inst, interpretations);
                 }
 
                 System.err.print(Util.formatTimeSince(start));
-                out.println(dt);
-                Map results = null;
-
-                try {
-                    results = irtg.interpret(dt);
-                    Iterator var30 = outputInterpretations.iterator();
-
-                    while(var30.hasNext()) {
-                        String interp = (String)var30.next();
-                        if (dt == null) {
-                            out.println("<null>");
-                            out.println("<null>");
-                        } else {
-                            OutputCodec oc = (OutputCodec)ocForInterpretation.get(interp);
-                            out.println(oc.asString(results.get(interp)));
-                            TreeWithInterpretations twi = irtg.interpretWithPointers(dt);
-                            out.println(twi.getInterpretation(interp).getHomomorphicTerm().toString());
-                        }
+                if (trees == null) {
+                    out.println(dt);
+                    getResults(irtg, dt, outputInterpretations, out, ocForInterpretation);
+                    if (param.blankLinkes) {
+                        out.println();
                     }
-                } catch (Exception var36) {
-                    System.err.printf(" ** %s", var36.getMessage());
                 }
-
-                if (param.blankLinkes) {
+                else {
+                    for(Tree<String> tree: trees) {
+                        out.println(tree);
+                        getResults(irtg, tree, outputInterpretations, out, ocForInterpretation);
+                    }
                     out.println();
                 }
 
@@ -165,6 +160,31 @@ public class AltoHomomorphism {
 
     }
 
+    private static Map getResults(InterpretedTreeAutomaton irtg, Tree<String> dt, List<String> outputInterpretations,
+                                  PrintWriter out, Map<String, OutputCodec> ocForInterpretation) {
+        Map results = null;
+        try {
+            results = irtg.interpret(dt);
+            Iterator var30 = outputInterpretations.iterator();
+
+            while(var30.hasNext()) {
+                String interp = (String)var30.next();
+                if (dt == null) {
+                    out.println("<null>");
+                    out.println("<null>");
+                } else {
+                    OutputCodec oc = (OutputCodec)ocForInterpretation.get(interp);
+                    out.println(oc.asString(results.get(interp)));
+                    TreeWithInterpretations twi = irtg.interpretWithPointers(dt);
+                    out.println(twi.getInterpretation(interp).getHomomorphicTerm().toString());
+                }
+            }
+        } catch (Exception var36) {
+            System.err.printf(" ** %s", var36.getMessage());
+        }
+        return results;
+    }
+
     private static CoarseToFineParser makeCoarseToFineParserFromFile(InterpretedTreeAutomaton irtg, String interpretation, String ftcMapFilename, double theta) throws FileNotFoundException, IOException, ParseException {
         FineToCoarseMapping ftc = GrammarCoarsifier.readFtcMapping(StringTools.slurp(new FileReader(ftcMapFilename)));
         return new CoarseToFineParser(irtg, interpretation, ftc, theta);
@@ -174,6 +194,20 @@ public class AltoHomomorphism {
         TreeAutomaton chart = irtg.parseInputObjects(inst.getRestrictedInputObjects(interpretations));
         Tree<String> dt = chart.viterbi();
         return dt;
+    }
+
+    private static ArrayList<Tree<String>> parse(InterpretedTreeAutomaton irtg, Instance inst, List<String> interpretations) {
+        TreeAutomaton chart = irtg.parseInputObjects(inst.getRestrictedInputObjects(interpretations));
+        ArrayList<Tree<String>> trees = new ArrayList<>();
+        SortedLanguageIterator sortedLanguageIterator = (SortedLanguageIterator)chart.sortedLanguageIterator();
+        int maxIterations = 10;
+        int i = 0;
+        while (sortedLanguageIterator.hasNext() && i < maxIterations) {
+            Tree<String> dt = irtg.getAutomaton().getSignature().resolve(sortedLanguageIterator.next().getTree());
+            i++;
+            trees.add(dt);
+        }
+        return trees;
     }
 
     public static Tree<String> parseCtf(CoarseToFineParser ctfp, Instance inst, String interpretation) {
@@ -234,6 +268,11 @@ public class AltoHomomorphism {
         )
         public String ctf;
         @Parameter(
+                names = {"--viterbi"},
+                description = "Perform viterbi parsing."
+        )
+        public String viterbi;
+        @Parameter(
                 names = {"--verbose"},
                 description = "Print some debugging output."
         )
@@ -253,6 +292,7 @@ public class AltoHomomorphism {
             this.outputCodecs = new HashMap();
             this.blankLinkes = false;
             this.ctf = null;
+            this.viterbi = null;
             this.verbose = false;
         }
     }
