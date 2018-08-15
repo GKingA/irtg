@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language id="irtg" _name="IRTG" version="2.0" _section="Other">
+  <metadata>
+    <property name="mimetypes">text/x-irtg-file;application/x-irtg-file</property>
+    <property name="globs">*.irtg</property>
+    <property name="line-comment-start">//</property>
+  </metadata>
+
+  <styles>
+    <style id="rule" _name="rule"  map-to="def:keyword" />
+    <style id="comment" _name="comment"  map-to="def:comment" />
+    <style id="interpretations" _name="interpretations" map-to="def:type"/>
+    <style id="interpretation_name" _name="interpretation_name"  map-to="def:constant" />
+    <style id="interpretation" _name="interpretation"  map-to="def:identifier" />
+    <style id="string" _name="string"  map-to="def:special-char" />
+  </styles>
+
+  <definitions>
+
+    <context id="rule" style-ref="rule">
+      <match>[a-zA-Z0-9_.-]*[\!]* -> [a-zA-Z0-9_.-]*\([a-zA-Z0-9_.\, -]*\)|[a-zA-Z0-9_.-]*[\!]* -> [a-zA-Z0-9_.-]*</match>
+    </context>
+
+    <context id="comment" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
+      <start>//</start>
+    </context>
+
+    <context id="interpretations" style-ref="interpretations" end-at-line-end="true">
+      <start>interpretation</start>
+    </context>
+
+    <context id="interpretation_name" style-ref="interpretation_name">
+      <match>\[[a-zA-Z0-9_]+\]</match>
+    </context>
+
+    <context id="interpretation" style-ref="interpretation" end-at-line-end="true">
+      <start>\] </start>
+    </context>
+
+    <context id="string" style-ref="string" end-at-line-end="true">
+      <start>"</start>
+      <end>"</end>
+    </context>
+
+    <context id="irtg" class="no-spell-check">
+      <include>
+        <context ref="rule"/>
+        <context ref="comment"/>
+        <context ref="interpretations"/>
+        <context ref="interpretation_name"/>
+        <context ref="interpretation"/>
+        <context ref="string"/>
+      </include>
+    </context>
+  </definitions>
+</language>
